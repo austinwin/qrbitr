@@ -54,16 +54,42 @@ export const ReceiveComponent = {
       this.isScanning = true;
       
       try {
+        // Re-enumerate cameras after permissions are granted
+        await this.loadCameras();
+        
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: this.selectedCamera ? { deviceId: { exact: this.selectedCamera } } : true 
         });
         
+        // After stream is obtained, check cameras again to ensure we have the complete list
+        await this.loadCameras();
+        
         this.$nextTick(() => {
           const video = this.$refs.video;
-          if (!video) return;
+          if (!video) {
+            console.error('Video element not found');
+            this.error = 'Camera initialization failed. Please try again.';
+            return;
+          }
           
+          // Make sure video is visible and properly sized
+          video.style.display = 'block';
+          video.width = 320;  // Set explicit dimensions
+          video.height = 240;
+          
+          // Handle iOS Safari specific issues
+          video.setAttribute('playsinline', true);
+          video.setAttribute('autoplay', true);
+          video.setAttribute('muted', true);
+          
+          // Attach stream to video element
           video.srcObject = stream;
-          video.play();
+          
+          // Play the video and handle errors
+          video.play().catch(e => {
+            console.error('Error playing video:', e);
+            this.error = 'Failed to start camera feed. Please try again.';
+          });
           
           this.scanning.active = true;
           this.scanCode();
@@ -276,17 +302,36 @@ export const ReceiveComponent = {
     
     async loadCameras() {
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        this.cameras = devices.filter(device => device.kind === 'videoinput');
-        this.hasCamera = this.cameras.length > 0;
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+          this.hasCamera = false;
+          this.error = 'Camera access is not supported in this browser. Please use image upload instead.';
+          return;
+        }
         
-        if (this.cameras.length > 0) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoCameras = devices.filter(device => device.kind === 'videoinput');
+        
+        // Keep track of previous camera count
+        const previousCameraCount = this.cameras.length;
+        
+        this.cameras = videoCameras;
+        this.hasCamera = videoCameras.length > 0;
+        
+        // If we found cameras and don't have one selected, select the first one
+        if (this.cameras.length > 0 && (!this.selectedCamera || 
+            !this.cameras.some(cam => cam.deviceId === this.selectedCamera))) {
           this.selectedCamera = this.cameras[0].deviceId;
         }
+        
+        // Log for debugging purposes
+        console.log(`Cameras detected: ${this.cameras.length}`);
+        
+        return this.cameras;
       } catch (err) {
         console.error('Error listing cameras:', err);
         this.hasCamera = false;
         this.error = 'Could not detect cameras. Please use image upload instead.';
+        return [];
       }
     },
     
@@ -295,6 +340,26 @@ export const ReceiveComponent = {
         if (this.hasCamera) {
           this.startCamera();
         }
+      });
+    },
+    
+    switchCamera() {
+      if (this.cameras.length <= 1) return;
+      
+      // Find current camera index
+      const currentIndex = this.cameras.findIndex(cam => cam.deviceId === this.selectedCamera);
+      // Get next camera index (cycle through available cameras)
+      const nextIndex = (currentIndex + 1) % this.cameras.length;
+      
+      // Stop current camera
+      this.stopCamera();
+      
+      // Select next camera
+      this.selectedCamera = this.cameras[nextIndex].deviceId;
+      
+      // Restart camera with new selection
+      this.$nextTick(() => {
+        this.startCamera();
       });
     }
   },
@@ -361,44 +426,30 @@ export const ReceiveComponent = {
           </button>
           
           <button 
-            @click="toggleManualMode" 
-            class="px-4 py-2 bg-gray-500 text-white rounded flex-1 hover:bg-gray-600"
+            v-if="isScanning && cameras.length > 1" 
+            @click="switchCamera" 
+            class="px-4 py-2 bg-blue-500 text-white rounded flex-grow hover:bg-blue-600"
           >
             <span class="flex items-center justify-center">
-              <svg v-if="manualMode" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-              </svg>
-              {{ manualMode ? 'Use Camera' : 'Upload Image' }}
+              Switch Camera
             </span>
           </button>
-        </div>
-        
-        <div v-if="!manualMode && cameras.length > 1" class="mt-2">
-          <label class="block mb-1 text-sm">Select camera:</label>
-          <select v-model="selectedCamera" class="p-2 border rounded w-full dark:bg-gray-700 dark:text-white">
-            <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
-              {{ camera.label || \`Camera \${cameras.indexOf(camera) + 1}\` }}
-            </option>
-          </select>
-        </div>
-        
-        <div v-if="manualMode" class="mt-2">
-          <label class="block mb-1 text-sm">Select QR code image:</label>
-          <input 
-            type="file" 
-            accept="image/*" 
-            @change="handleFileUpload" 
-            class="p-2 border rounded w-full dark:bg-gray-700 dark:text-white"
-          />
         </div>
       </div>
       
       <div class="scanner-container mb-4">
-        <div v-if="isScanning" class="relative bg-black rounded overflow-hidden">
-          <video ref="video" class="w-full h-auto"></video>
+        <div v-if="isScanning" class="relative bg-black rounded overflow-hidden" style="min-height: 240px;">
+          <video 
+            ref="video" 
+            class="w-full h-auto" 
+            playsinline 
+            autoplay 
+            muted
+            style="max-height: 100%; object-fit: contain;"
+          ></video>
           <div class="scan-overlay absolute inset-0 border-2 border-blue-500 opacity-70">
             <div class="scan-line"></div>
           </div>

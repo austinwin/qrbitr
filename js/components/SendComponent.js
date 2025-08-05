@@ -232,6 +232,14 @@ export const SendComponent = {
       // Clear previous QR code
       qrContainer.innerHTML = '';
 
+      // Ensure container is styled for centering and sizing
+      qrContainer.style.display = 'flex';
+      qrContainer.style.justifyContent = 'center';
+      qrContainer.style.alignItems = 'center';
+      qrContainer.style.width = '100%';
+      qrContainer.style.height = '256px'; // or '100%' if you want it to fill parent
+      qrContainer.style.minHeight = '256px';
+
       try {
         // Ensure QRCode library is loaded
         await ensureQRCodeLibrary();
@@ -241,6 +249,7 @@ export const SendComponent = {
         // Robustly get QRCode constructor
         const QR = await this.checkQRCode();
 
+        // Use pixel numbers for width/height (not '100%')
         new QR(qrContainer, {
           text: this.qrCodeData,
           width: 256,
@@ -251,7 +260,18 @@ export const SendComponent = {
                         (QR.CorrectLevel?.M && QR.CorrectLevel[this.errorCorrection]) ||
                         1 // Default to medium if structure unknown
         });
-        
+
+        // Make QR code responsive and centered
+        const qrEl = qrContainer.querySelector('canvas, img, svg');
+        if (qrEl) {
+          qrEl.style.width = '100%';
+          qrEl.style.height = '100%';
+          qrEl.style.maxWidth = '256px';
+          qrEl.style.maxHeight = '256px';
+          qrEl.style.display = 'block';
+          qrEl.style.margin = '0 auto';
+        }
+
         this.qrError = null;
       } catch (error) {
         this.qrError = 'Error creating QR code: ' + error.message;
