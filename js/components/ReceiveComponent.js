@@ -452,6 +452,14 @@ export const ReceiveComponent = {
               Switch Camera
             </span>
           </button>
+          
+          <label class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm8 7V7a1 1 0 10-2 0v3H7a1 1 0 100 2h3v3a1 1 0 102 0v-3h3a1 1 0 100-2h-3z"/>
+            </svg>
+            Upload Image
+            <input type="file" accept="image/*" @change="handleFileUpload" class="hidden" />
+          </label>
         </div>
       </div>
       
