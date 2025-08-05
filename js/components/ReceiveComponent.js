@@ -58,7 +58,11 @@ export const ReceiveComponent = {
         await this.loadCameras();
         
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: this.selectedCamera ? { deviceId: { exact: this.selectedCamera } } : true 
+          video: this.selectedCamera ? { deviceId: { exact: this.selectedCamera } } : {
+            facingMode: 'environment', // Prefer back camera for QR scanning
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
         });
         
         // After stream is obtained, check cameras again to ensure we have the complete list
@@ -74,25 +78,36 @@ export const ReceiveComponent = {
           
           // Make sure video is visible and properly sized
           video.style.display = 'block';
-          video.width = 320;  // Set explicit dimensions
-          video.height = 240;
           
-          // Handle iOS Safari specific issues
+          // Don't set fixed dimensions on the video element
+          // Let CSS handle the sizing instead
+          
+          // These attributes are critical for iOS/mobile Safari in PWA mode
           video.setAttribute('playsinline', true);
           video.setAttribute('autoplay', true);
           video.setAttribute('muted', true);
+          video.setAttribute('webkit-playsinline', true); // Additional Safari support
           
-          // Attach stream to video element
-          video.srcObject = stream;
-          
-          // Play the video and handle errors
-          video.play().catch(e => {
-            console.error('Error playing video:', e);
-            this.error = 'Failed to start camera feed. Please try again.';
-          });
-          
-          this.scanning.active = true;
-          this.scanCode();
+          // Ensure video is visible before setting srcObject
+          setTimeout(() => {
+            // Detach any existing streams first
+            if (video.srcObject) {
+              const tracks = video.srcObject.getTracks();
+              tracks.forEach(track => track.stop());
+            }
+            
+            // Attach stream to video element
+            video.srcObject = stream;
+            
+            // Play the video and handle errors
+            video.play().catch(e => {
+              console.error('Error playing video:', e);
+              this.error = 'Failed to start camera feed. Please try again.';
+            });
+            
+            this.scanning.active = true;
+            this.scanCode();
+          }, 100); // Small delay to ensure DOM is ready
         });
       } catch (err) {
         console.error('Error accessing camera:', err);
@@ -448,7 +463,8 @@ export const ReceiveComponent = {
             playsinline 
             autoplay 
             muted
-            style="max-height: 100%; object-fit: contain;"
+            webkit-playsinline
+            style="max-height: 100%; object-fit: contain; max-width: 100%;"
           ></video>
           <div class="scan-overlay absolute inset-0 border-2 border-blue-500 opacity-70">
             <div class="scan-line"></div>
