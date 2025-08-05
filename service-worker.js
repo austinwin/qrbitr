@@ -4,7 +4,6 @@ const CACHE_NAME = 'qr-bitr-v1.1';  // Add versioning
 const FILES_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json',
   './css/style.css',
   './js/app.js',
   './js/modules/decode.js',
