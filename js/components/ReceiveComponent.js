@@ -402,7 +402,7 @@ export const ReceiveComponent = {
           <button 
             v-if="!isScanning && hasCamera && !manualMode" 
             @click="startCamera" 
-            class="px-4 py-2 bg-blue-500 text-white rounded flex-1 hover:bg-blue-600"
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             <span class="flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -415,7 +415,7 @@ export const ReceiveComponent = {
           <button 
             v-if="isScanning" 
             @click="stopCamera" 
-            class="px-4 py-2 bg-red-500 text-white rounded flex-1 hover:bg-red-600"
+            class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
           >
             <span class="flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -428,7 +428,7 @@ export const ReceiveComponent = {
           <button 
             v-if="isScanning && cameras.length > 1" 
             @click="switchCamera" 
-            class="px-4 py-2 bg-blue-500 text-white rounded flex-grow hover:bg-blue-600"
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             <span class="flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
