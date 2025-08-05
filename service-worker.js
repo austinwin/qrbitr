@@ -9,6 +9,7 @@ const FILES_TO_CACHE = [
   './js/app.js',
   './js/modules/decode.js',
   './js/modules/encode.js',
+  './js/modules/storage.js',
   './js/components/SendComponent.js',
   './js/components/ReceiveComponent.js',
   './js/utils.js',
@@ -61,3 +62,4 @@ self.addEventListener('fetch', event => {
   );
 
 });
+
