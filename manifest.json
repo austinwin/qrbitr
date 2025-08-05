@@ -1,7 +1,7 @@
 {
   "name": "QRBitr",
   "short_name": "QRBitr",
-  "start_url": "https://austinwin.github.io/qrbitr/"
+  "start_url": "https://austinwin.github.io/qrbitr/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4CAF50",
