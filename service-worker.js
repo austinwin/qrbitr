@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qr-bitr-v1.3';  // Add versioning
+const CACHE_NAME = 'qr-bitr-v1.4';  // Add versioning
 // NOTE: Increment CACHE_NAME when deploying new versions to force cache update.
 //8-1-2025: release v1.1 - force to auto-update
 const FILES_TO_CACHE = [
@@ -61,4 +61,5 @@ self.addEventListener('fetch', event => {
   );
 
 });
+
 
