@@ -47,16 +47,14 @@ export const SendComponent = {
   template: `
     <div class="send-component">
       <div class="form-group mb-4">
-        <div class="flex items-center mb-2">
-          <label for="text-input" class="block">Text to QR code</label>
-          <!-- Upload file button (now a real button, styled like Sample) -->
+        <div class="flex items-center mb-2 flex-wrap gap-2">
           <button
             type="button"
             class="ml-2 flex items-center justify-center border border-blue-500 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 text-white dark:bg-blue-600 dark:border-blue-400 dark:text-white dark:hover:bg-blue-700 dark:active:bg-blue-800 rounded cursor-pointer transition-colors"
-            style="margin-left: 0.5em;font-size: 0.75em; height: 1.7em; min-width: 3.2em; padding: 0 0.7em; line-height: 1; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.03); cursor: pointer;"
+            style="margin-bottom: 0.3em; font-size: 0.8em; height: 2.5em; min-width: 10em; padding: 0 0.7em; line-height: 1.2; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.06);"
             @click="triggerFileInput"
           >
-            Or, Upload File...
+            Enter Text or Click to Upload
           </button>
           <input ref="fileInput" type="file" accept=".txt" @change="handleFileUpload" class="hidden" />
           <span class="flex-1"></span>
@@ -64,14 +62,14 @@ export const SendComponent = {
             @click="fillSample"
             type="button"
             class="ml-2 flex items-center justify-center border border-blue-500 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 text-white dark:bg-blue-600 dark:border-blue-400 dark:text-white dark:hover:bg-blue-700 dark:active:bg-blue-800 rounded cursor-pointer transition-colors"
-            style="font-size: 0.75em; height: 1.7em; min-width: 3.2em; padding: 0 0.7em; line-height: 1; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.03);"
+            style="margin-bottom: 0.3em; font-size: 0.8em; height: 2.5em; min-width: 7em; padding: 0 0.7em; line-height: 1.2; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.06);"
           >Sample</button>
         </div>
         <textarea 
           id="text-input"
           v-model="text"
           @input="onTextChange"
-          class="w-full p-2 border rounded h-24 resize-y dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          class="w-full p-2 border rounded h- resize-y dark:bg-gray-700 dark:text-white dark:border-gray-600"
           placeholder="Enter text to convert to QR code..."
         ></textarea>
       </div>
