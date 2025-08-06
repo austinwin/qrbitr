@@ -648,7 +648,7 @@ export const ReceiveComponent = {
       
       <div v-if="hasSegments" class="result-container border rounded p-3 mb-4 dark:border-gray-600">
         <div class="mb-2 flex justify-between items-center">
-          <h3 class="font-bold">Decoded Data</h3>
+          <h3 class="font-bold">Decoded QR Data</h3>
           <span v-if="totalSegments > 1" class="text-sm">
             {{ receivedSegments }}/{{ totalSegments }} segments
           </span>
