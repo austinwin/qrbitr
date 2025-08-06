@@ -48,7 +48,18 @@ export const SendComponent = {
     <div class="send-component">
       <div class="form-group mb-4">
         <div class="flex items-center mb-2">
-          <label for="text-input" class="block">Text to QR code:</label>
+          <label for="text-input" class="block">Text to QR code</label>
+          <!-- Upload file button (now a real button, styled like Sample) -->
+          <button
+            type="button"
+            class="ml-2 flex items-center justify-center border border-blue-500 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 text-white dark:bg-blue-600 dark:border-blue-400 dark:text-white dark:hover:bg-blue-700 dark:active:bg-blue-800 rounded cursor-pointer transition-colors"
+            style="margin-left: 0.5em;font-size: 0.75em; height: 1.7em; min-width: 3.2em; padding: 0 0.7em; line-height: 1; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.03); cursor: pointer;"
+            @click="triggerFileInput"
+          >
+            Or, Upload File...
+          </button>
+          <input ref="fileInput" type="file" accept=".txt" @change="handleFileUpload" class="hidden" />
+          <span class="flex-1"></span>
           <button 
             @click="fillSample"
             type="button"
@@ -386,6 +397,20 @@ export const SendComponent = {
     fillSample() {
       this.text = 'https://austinwin.github.io/qrbitr';
       this.onTextChange();
+    },
+    triggerFileInput() {
+      // Open the hidden file input when the button is clicked
+      this.$refs.fileInput && this.$refs.fileInput.click();
+    },
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.text = e.target.result || '';
+        this.onTextChange();
+      };
+      reader.readAsText(file);
     },
   },
   
