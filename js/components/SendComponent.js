@@ -116,22 +116,35 @@ export const SendComponent = {
         </div>
         <div ref="qrcode" class="mx-auto"></div>
         
-        <div v-if="isMultiSegment" class="mt-4 flex items-center justify-between">
-          <button 
-            @click="prevSegment" 
-            :disabled="currentSegment === 0"
-            class="px-3 py-1 bg-blue-500 text-white rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span class="text-sm">{{ currentSegment + 1 }} of {{ totalSegments }}</span>
-          <button 
-            @click="nextSegment" 
-            :disabled="currentSegment >= totalSegments - 1"
-            class="px-3 py-1 bg-blue-500 text-white rounded disabled:opacity-50"
-          >
-            Next
-          </button>
+        <div v-if="isMultiSegment" class="mt-4">
+          <!-- Progress bar -->
+          <div class="mb-3">
+            <div class="bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+              <div 
+                class="bg-blue-500 h-2.5 rounded-full transition-all duration-300" 
+                :style="{ width: ((currentSegment + 1) / totalSegments * 100) + '%' }"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="flex items-center justify-between" style="margin-top:12px;">
+            <div class="flex items-center gap-2">
+              <div class="flex items-center">
+                <label class="text-sm mr-2">Speed:</label>
+                <span class="mr-2"></span>
+                <select v-model="rotationInterval" @change="updateRotation" class="text-sm p-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                  <option :value="1000">Fast (1s)</option>
+                  <option :value="2000">Medium (2s)</option>
+                  <option :value="3000">Slow (3s)</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex flex-col items-end text-sm">
+              <span>Progress: {{ currentSegment + 1 }} of {{ totalSegments }}</span>
+              <span v-if="isRotating"> ({{ countdownSeconds }}s)</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -155,7 +168,13 @@ export const SendComponent = {
       qrError: null,
       isLoading: false,
       libraryLoaded: false,
-      retryCount: 0
+      retryCount: 0,
+      // Auto-rotation properties
+      isRotating: false,
+      rotationInterval: 2000, // 2 seconds default
+      rotationTimer: null,
+      countdownSeconds: 2,
+      countdownTimer: null
     };
   },
   computed: {
@@ -196,8 +215,14 @@ export const SendComponent = {
           }
         });
         
+        // Automatically start rotation if there are multiple segments
         this.$nextTick(() => {
           this.renderQRCode();
+          
+          // Always start rotation for multi-segment, no pause/stop
+          if (this.isMultiSegment && this.totalSegments > 1) {
+            this.startRotation();
+          }
         });
       } catch (error) {
         console.error('Error generating QR code:', error);
@@ -291,17 +316,38 @@ export const SendComponent = {
       }
     },
     
-    nextSegment() {
-      if (this.currentSegment < this.totalSegments - 1) {
-        this.currentSegment++;
-        this.generateQR();
+    startRotation() {
+      if (this.isMultiSegment) {
+        this.isRotating = true;
+        this.countdownSeconds = this.rotationInterval / 1000;
+
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        if (this.rotationTimer) clearInterval(this.rotationTimer);
+
+        // Start countdown timer
+        this.countdownTimer = setInterval(() => {
+          this.countdownSeconds -= 1;
+          if (this.countdownSeconds <= 0) {
+            this.countdownSeconds = this.rotationInterval / 1000;
+          }
+        }, 1000);
+
+        // Start rotation timer
+        this.rotationTimer = setInterval(() => {
+          if (this.currentSegment >= this.totalSegments - 1) {
+            this.currentSegment = 0;
+          } else {
+            this.currentSegment++;
+          }
+          this.generateQR();
+        }, this.rotationInterval);
       }
     },
-    
-    prevSegment() {
-      if (this.currentSegment > 0) {
-        this.currentSegment--;
-        this.generateQR();
+
+    updateRotation() {
+      // Update rotation speed while keeping it running
+      if (this.isMultiSegment) {
+        this.startRotation();
       }
     },
     
@@ -311,10 +357,28 @@ export const SendComponent = {
     
     onTextChange: debounce(function() {
       if (this.text) {
+        this.stopRotation(); // Stop any ongoing rotation
         this.currentSegment = 0;
         this.generateQR();
       }
-    }, 500)
+    }, 500),
+    
+    stopRotation() {
+      if (this.rotationTimer) {
+        clearInterval(this.rotationTimer);
+        this.rotationTimer = null;
+      }
+      if (this.countdownTimer) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+      }
+      this.isRotating = false;
+    },
+  },
+  
+  beforeUnmount() {
+    // Cleanup any timers when component is destroyed
+    this.stopRotation();
   },
   
   async mounted() {

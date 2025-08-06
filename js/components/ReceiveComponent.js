@@ -17,7 +17,8 @@ export const ReceiveComponent = {
         active: false,
         lastFound: 0
       },
-      error: null
+      error: null,
+      animationFrame: null
     };
   },
   
@@ -117,14 +118,26 @@ export const ReceiveComponent = {
     },
     
     stopCamera() {
+      // Cancel any pending animation frames first
+      if (this.animationFrame) {
+        cancelAnimationFrame(this.animationFrame);
+        this.animationFrame = null;
+      }
+      
       this.isScanning = false;
       this.scanning.active = false;
       
       if (this.$refs.video && this.$refs.video.srcObject) {
         const tracks = this.$refs.video.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach(track => {
+          track.stop();
+        });
         this.$refs.video.srcObject = null;
+        this.$refs.video.load(); // Force video element to reset
       }
+      
+      // Clear any previous error when stopping camera
+      this.error = null;
     },
     
     async scanCode() {
@@ -162,7 +175,8 @@ export const ReceiveComponent = {
       }
       
       if (this.scanning.active) {
-        requestAnimationFrame(() => this.scanCode());
+        // Store the animation frame ID so we can cancel it if needed
+        this.animationFrame = requestAnimationFrame(() => this.scanCode());
       }
     },
     
@@ -188,33 +202,169 @@ export const ReceiveComponent = {
               segments: this.segments
             });
             
+            // Show a temporary success message
+            this.showSuccessMessage(`Segment ${result.index + 1}/${result.total} captured!`, 1500);
+            
             // Check if all segments are received
             if (!this.segments.includes(null) && this.segments.length === result.total) {
+              // Immediate and aggressive camera shutdown
+              // First cancel any animation frames
+              if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+              }
+              
+              // Set scanning inactive BEFORE calling stopCamera
+              this.scanning.active = false;
+              this.isScanning = false;
+              
+              // Stop all media tracks directly
+              if (this.$refs.video && this.$refs.video.srcObject) {
+                const tracks = this.$refs.video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+              }
+              
+              // Then call the main stopCamera method
               this.stopCamera();
+              
+              this.showSuccessMessage('All segments received! 🎉', 3000);
+              
+              // Update UI state with a slight delay to allow animations to complete
+              setTimeout(() => {
+                try {
+                  // Scroll to results
+                  const resultContainer = document.querySelector('.result-container');
+                  if (resultContainer) {
+                    resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  
+                  // Show completion celebration
+                  this.showCompletionCelebration();
+                } catch (err) {
+                  console.error('Error in completion UI updates:', err);
+                  // Don't show error to user as data is already captured successfully
+                }
+              }, 800);
             }
+          } else if (this.segments[result.index]) {
+            // Already have this segment, show a different tone
+            this.playDuplicateBeep();
           }
         } else {
+          // Stop camera FIRST before anything else
+          this.stopCamera();
+          
           // Single segment data
           this.decodedText = result.data;
           this.segments = [result.data];
-          this.stopCamera();
           this.playBeep();
+          
+          this.showSuccessMessage('QR code captured successfully!', 2000);
           
           // Save session
           saveSession({
             type: 'receive',
             segments: this.segments
           });
+          
+          // Scroll to results with a slight delay
+          setTimeout(() => {
+            try {
+              const resultContainer = document.querySelector('.result-container');
+              if (resultContainer) {
+                resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            } catch (err) {
+              console.error('Error scrolling to results:', err);
+              // Don't show error to user as data is already captured
+            }
+          }, 500);
         }
+        // Clear any previous errors since we've successfully processed the QR code
+        this.error = null;
       } catch (error) {
         console.error('Error processing QR data:', error);
-        this.error = 'Invalid QR code format. Please try again.';
+        // Don't show error message to the user
+        // Silent fail
       }
     },
     
-    playBeep() {
+    // Add method to show completion celebration
+    showCompletionCelebration() {
+      // Create a celebration overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center z-50';
+      overlay.style.animation = 'fadeIn 0.5s ease-out';
+      
+      overlay.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-center max-w-md mx-4">
+          <div class="text-green-500 text-4xl mb-2">✓</div>
+          <h3 class="text-xl font-bold mb-2">All Segments Received!</h3>
+          <p class="mb-3">Successfully captured all ${this.segments.length} QR code segments.</p>
+          <button class="px-4 py-2 bg-blue-500 text-white rounded">View Data</button>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      // Add click handler for the button
+      overlay.querySelector('button').onclick = () => {
+        document.body.removeChild(overlay);
+      };
+      
+      // Add click handler for the overlay itself
+      overlay.onclick = (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+        }
+      };
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (document.body.contains(overlay)) {
+          document.body.removeChild(overlay);
+        }
+      }, 5000);
+      
+      // Add required CSS
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    },
+    
+    // Add a new method for showing success messages
+    showSuccessMessage(message, duration = 2000) {
+      // We'll create a visual overlay for feedback
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed top-0 left-0 right-0 bg-green-500 text-white text-center p-2 z-50';
+      overlay.style.transform = 'translateY(-100%)';
+      overlay.style.transition = 'transform 0.3s ease';
+      overlay.textContent = message;
+      
+      document.body.appendChild(overlay);
+      
+      // Animate in
+      setTimeout(() => {
+        overlay.style.transform = 'translateY(0)';
+      }, 10);
+      
+      // Animate out and remove
+      setTimeout(() => {
+        overlay.style.transform = 'translateY(-100%)';
+        setTimeout(() => {
+          document.body.removeChild(overlay);
+        }, 300);
+      }, duration);
+    },
+    
+    // Add a different beep for duplicates
+    playDuplicateBeep() {
       try {
-        // Create a simple beep sound
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
@@ -223,13 +373,12 @@ export const ReceiveComponent = {
         gainNode.connect(audioCtx.destination);
         
         oscillator.type = 'sine';
-        oscillator.frequency.value = 1000;
-        gainNode.gain.value = 0.1;
+        oscillator.frequency.value = 500; // Lower frequency for duplicates
+        gainNode.gain.value = 0.05;
         
         oscillator.start();
         setTimeout(() => oscillator.stop(), 100);
       } catch (e) {
-        // Silent fail - audio not crucial
         console.log('Audio feedback not available');
       }
     },
@@ -262,20 +411,23 @@ export const ReceiveComponent = {
             if (code) {
               this.processQRData(code.data);
             } else {
-              this.error = 'No QR code found in the image';
+              console.log('No QR code found in the image');
+              // Don't show error to user
             }
           } catch (err) {
             console.error('Error processing image:', err);
-            this.error = 'Failed to process image. Please try another image.';
+            // Don't show error to user
           }
         };
         img.onerror = () => {
-          this.error = 'Invalid image file. Please try another image.';
+          console.error('Invalid image file');
+          // Don't show error to user
         };
         img.src = e.target.result;
       };
       reader.onerror = () => {
-        this.error = 'Failed to read the file. Please try again.';
+        console.error('Failed to read the file');
+        // Don't show error to user
       };
       reader.readAsDataURL(file);
     },
@@ -477,6 +629,19 @@ export const ReceiveComponent = {
           <div class="scan-overlay absolute inset-0 border-2 border-blue-500 opacity-70">
             <div class="scan-line"></div>
           </div>
+          
+          <!-- Progress overlay at bottom center -->
+          <div v-if="totalSegments > 1" class="absolute bottom-0 left-0 right-0 p-2 bg-black bg-opacity-50 flex flex-col items-center">
+            <div class="text-white text-sm mb-1">
+              {{ receivedSegments }}/{{ totalSegments }} segments captured
+            </div>
+            <div class="w-4/5 bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div 
+                class="bg-green-500 h-full rounded-full transition-all duration-300" 
+                :style="{ width: progressPercentage + '%' }"
+              ></div>
+            </div>
+          </div>
         </div>
         <canvas ref="canvas" class="hidden"></canvas>
       </div>
@@ -489,20 +654,29 @@ export const ReceiveComponent = {
           </span>
         </div>
         
-        <div v-if="totalSegments > 1 && receivedSegments < totalSegments" class="mb-3">
-          <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-            <div 
-              class="bg-blue-500 h-2.5 rounded-full" 
-              :style="{ width: progressPercentage + '%' }"
-            ></div>
+        <!-- Remove the duplicate progress visualization section, keeping only the segment indicators -->
+        <div v-if="totalSegments > 1" class="mb-4">
+          <!-- Segment indicators - show which segments have been captured -->
+          <div v-if="totalSegments <= 20" class="flex flex-wrap gap-1 mt-2">
+            <div v-for="(segment, index) in segments" 
+                 :key="index"
+                 :class="['w-6 h-6 rounded-full flex items-center justify-center text-xs', 
+                         segment !== null ? 'bg-green-500 text-white' : 'bg-gray-300 dark:bg-gray-600']">
+              {{ index + 1 }}
+            </div>
+          </div>
+          <div v-else class="text-sm mt-1 opacity-70">
+            {{ receivedSegments }} of {{ totalSegments }} segments captured
           </div>
         </div>
         
+        <!-- Output display -->
         <div class="output-text mb-3 p-3 bg-gray-100 dark:bg-gray-700 rounded min-h-[100px] max-h-[200px] overflow-auto whitespace-pre-wrap break-words">
           {{ combinedOutput }}
         </div>
         
-        <div class="flex gap-2">
+        <!-- Action buttons -->
+        <div class="flex gap-2" style="margin-top: 0.75rem;">
           <button 
             ref="copyButton"
             @click="copyToClipboard" 
@@ -559,6 +733,11 @@ export const ReceiveComponent = {
           0% { top: 5%; }
           50% { top: 95%; }
           100% { top: 5%; }
+        }
+        
+        /* Add smooth transitions */
+        .bg-green-500 {
+          transition: all 0.3s ease;
         }
       </style>
     </div>
