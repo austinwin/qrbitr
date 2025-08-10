@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>QRbitr - QR Bit Data Transfer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="QRbitr - Send and receive data via QR codes">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Chunk marker styles */
+    .chunk-marker {
+      position: absolute;
+      width: 2px;
+      height: 100%;
+      background-color: #00ff00; /* Bright green for visibility */
+      z-index: 10;
+    }
+    
+    #chunkProgressBar {
+      position: relative;
+      overflow: visible; /* Allow markers to be visible outside the bar */
+    }
+    
+    /* Share button styles */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .share-button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .share-button:hover {
+      background-color: #3367d6;
+    }
+
+    /* Install button styles */
+    .install-button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .install-button:hover {
+      background-color: #3d8b40;
+    }
+    
+    /* Heart button styles */
+    .heart-button {
+      background-color: #ffb300;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      transition: background-color 0.2s;
+      text-decoration: none;
+    }
+    .heart-button:hover {
+      background-color: #ff9800;
+      color: white;
+      text-decoration: none;
+    }
+    
+    /* Modal styles for fallback share */
+    .share-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+    }
+    
+    .modal-header {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    
+    .url-container {
+      position: relative;
+      margin: 15px 0;
+    }
+    
+    .url-input {
+      width: 100%;
+      padding: 8px;
+      padding-right: 60px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    
+    .copy-btn {
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .close-btn {
+      width: 100%;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    
+    /* Reduce spacing between tabs and content */
+    .tabs {
+      margin-bottom: 10px; /* Reduced from default */
+    }
+    
+    .tab-content h3 {
+      margin-top: 0; /* Remove top margin from h3 in tab content */
+      margin-bottom: 10px; /* Add a small bottom margin */
+    }
+    
+    /* Make the tabs stick closer to content */
+    .tab-content {
+      padding-top: 5px; /* Add small padding at top of content */
+    }
+    
+    /* New styles for send mode toggle switch - updated to segmented control style */
+    .send-mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #4285f4;
+      overflow: hidden;
+      width: fit-content;
+      min-width: 200px;
+    }
+    
+    .send-mode-label {
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #4285f4;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-align: center;
+      flex: 1;
+      background-color: white;
+      margin: 0;
+    }
+    
+    .send-mode-label.active {
+      color: white;
+      background-color: #4285f4;
+    }
+    
+    /* Hide the default checkbox/toggle */
+    .mode-switch {
+      display: none;
+    }
+    
+    #sendTextArea {
+      width: 100%;
+      min-height: 120px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: inherit;
+      margin-bottom: 15px;
+      resize: vertical;
+    }
+    
+    /* Hide the file input row by default */
+    .file-input-row {
+      display: none;
+    }
+    
+    /* Show the file input row when in Send File mode */
+    #sendModeToggle:not(:checked) + .file-input-row {
+      display: flex;
+    }
+    
+    /* Show the text area when in Send Text mode */
+    #sendModeToggle:checked ~ #sendTextArea {
+      display: block;
+    }
+    
+    /* Limit max height for result and file content containers, show scrollbar if needed */
+    #result, #fileContent {
+      max-height: 300px;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #4285f4 #e0e0e0;
+    }
+    #result::-webkit-scrollbar, #fileContent::-webkit-scrollbar {
+      width: 8px;
+      background: #e0e0e0;
+    }
+    #result::-webkit-scrollbar-thumb, #fileContent::-webkit-scrollbar-thumb {
+      background: #4285f4;
+      border-radius: 4px;
+    }
+
+    /* Footer styles */
+    footer {
+      text-align: center;
+      margin-top: 1rem; /* Reduce this value */
+      padding-bottom: 1rem; /* Adjust as needed */
+      opacity: 0.85;
+      font-size: 15px;
+      color: #222;
+      background: none;
+    }
+    
+    footer div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    footer a {
+      color: #4285f4;
+      text-decoration: underline;
+      margin-left: 4px;
+    }
+    
+    footer p {
+      font-size: 13px;
+      margin: 0.5em 0 0 0;
+      opacity: 0.7;
+    }
+  </style>
+  <meta name="theme-color" content="#4285f4">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">  
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <h2 style="text-align: left;">QRbitr - xferData</h2>
+      <div style="display: flex; align-items: center;">
+        <button id="installButton" class="install-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C12.5523 2 13 2.44772 13 3V13.5858L15.2929 11.2929C15.6834 10.9024 16.3166 10.9024 16.7071 11.2929C17.0976 11.6834 17.0976 12.3166 16.7071 12.7071L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L7.29289 12.7071C6.90237 12.3166 6.90237 11.6834 7.29289 11.2929C7.68342 10.9024 8.31658 10.9024 8.70711 11.2929L11 13.5858V3C11 2.44772 11.4477 2 12 2ZM4 17C4 15.8954 4.89543 15 6 15H8C8.55228 15 9 15.4477 9 16C9 16.5523 8.55228 17 8 17H6V20H18V17H16C15.4477 17 15 16.5523 15 16C15 15.4477 15.4477 15 16 15H18C19.1046 15 20 15.8954 20 17V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V17Z" fill="currentColor"/>
+          </svg>
+          Install
+        </button>
+        <button class="share-button" onclick="shareApp()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 8C19.6569 8 21 6.65685 21 5C21 3.34315 19.6569 2 18 2C16.3431 2 15 3.34315 15 5C15 5.12036 15.0077 5.23896 15.0227 5.35536L8.36024 9.18624C7.80621 8.45739 6.96924 8 6 8C4.34315 8 3 9.34315 3 11C3 12.6569 4.34315 14 6 14C6.96924 14 7.80621 13.5426 8.36024 12.8138L15.0227 16.6446C15.0077 16.761 15 16.8796 15 17C15 18.6569 16.3431 20 18 20C19.6569 20 21 18.6569 21 17C21 15.3431 19.6569 14 18 14C17.0308 14 16.1938 14.4574 15.6398 15.1862L8.97732 11.3554C8.99229 11.239 9 11.1204 9 11C9 10.8796 8.99229 10.761 8.97732 10.6446L15.6398 6.81376C16.1938 7.54261 17.0308 8 18 8Z" fill="currentColor"/>
+          </svg>
+        </button>
+        <a class="heart-button" href="https://buymeacoffee.com/austinwin" target="_blank" rel="noopener" title="Buy Me a Coffee">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54l-1.35 1.31z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('sender')">Sender</button>
+      <button class="tab" onclick="switchTab('receiver')">Receiver</button>
+    </div>
+
+    <section id="sender" class="tab-content active">
+      
+      <div class="card" id="senderInputCard">
+        <!-- Send mode toggle moved inside card and restyled as segmented control -->
+        <div class="send-mode-toggle">
+          <span class="send-mode-label">Send Text</span>
+          <span class="send-mode-label active">Send File</span>
+          <input type="checkbox" id="sendModeToggle" checked style="display: none;">
+        </div>
+        
+        <!-- Text area for Send Text mode -->
+        <textarea id="sendTextArea" placeholder="Type or paste text to send..." style="display:none;"></textarea>
+        
+        <!-- File input for Send File mode -->
+        <div class="file-input-row" id="fileInputRow">
+          <label for="fileInput" class="file-input-label">
+            <span class="icon">📂</span> File
+            <input type="file" id="fileInput" onchange="updateFileName()">
+          </label>
+          <div id="selectedFile" class="selected-file-name">No file selected</div>
+        </div>
+        
+        <!-- Send Text toggle and textarea -->
+        <div class="button-row sender-buttons">
+          <button id="sendBtn" onclick="toggleSending()" class="action-button primary-button">Start Sending</button>
+          <button id="restartBtn" onclick="restartSending()" class="action-button secondary-button" style="display: none;">Restart Sending</button>
+          <button id="magicSignalBtn" onclick="sendMagicSignal()" class="action-button accent-button" style="display: none;">Recover</button>
+        </div>
+      </div>
+      
+      <details id="advancedSettingsDetails">
+        <summary>Advanced Settings</summary>
+        <div class="advanced-settings card">
+          <div class="setting-row">
+            <label for="redundancySlider">Redundancy: <span id="redundancyValue">100%</span></label>
+            <input type="range" id="redundancySlider" min="20" max="300" value="100"
+              oninput="document.getElementById('redundancyValue').textContent = this.value + '%'">
+          </div>
+          
+          <div class="setting-row">
+            <label for="chunkSizeSlider">Chunk Size: <span id="chunkSizeValue">800</span> bytes</label>
+            <input type="range" id="chunkSizeSlider" min="1" max="3000" step="1" value="800"
+              oninput="document.getElementById('chunkSizeValue').textContent = this.value">
+          </div>
+          
+          <div class="setting-row">
+            <label for="fpsSlider">Frame Rate: <span id="fpsValue">10</span> FPS</label>
+            <input type="range" id="fpsSlider" min="1" max="60" value="10"
+              oninput="document.getElementById('fpsValue').textContent = this.value">
+          </div>
+          
+          <div class="setting-row">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" id="endlessFountainCheck" checked>
+              <label for="endlessFountainCheck">Endless Fountain Mode</label>
+              <span class="tooltip" title="Generate new fountain chunks continuously for better recovery">ℹ️</span>
+            </div>
+          </div>
+          
+          <div class="setting-row">
+            <label for="solitonDeltaSlider">Soliton δ: <span id="solitonDeltaValue">0.01</span></label>
+            <input type="range" id="solitonDeltaSlider" min="0.001" max="0.1" step="0.001" value="0.01"
+              oninput="document.getElementById('solitonDeltaValue').textContent = this.value">
+          </div>
+        </div>
+      </details>
+      
+      <!-- Full-screen sending controls - initially hidden -->
+      <div id="fullscreenControls" class="fullscreen-controls" style="display: none;">
+        <div class="fullscreen-buttons">
+          <button id="stopSendingBtn" onclick="toggleSending()" class="action-button stop-button">Stop</button>
+          <button id="restartFrom0Btn" onclick="restartSending(0)" class="action-button secondary-button">Restart [0%]</button>
+          <button id="restartFrom50Btn" onclick="restartSending(50)" class="action-button secondary-button">Restart [50%]</button>
+        </div>
+      </div>
+      
+      <div class="qr-display card" id="qrDisplayCard" style="display: none;">
+        <div class="qr-container">
+          <canvas id="sendCanvas" width="512" height="512"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="receiver" class="tab-content">
+      <div class="button-container card">
+        <div class="button-row">
+          <button id="startReceiveBtn" onclick="toggleReceiving()" class="action-button primary-button">Start Receiving</button>
+          <button id="downloadBtn" onclick="downloadReceivedFile()" class="action-button secondary-button" style="display: none;">Download File</button>
+        </div>
+      </div>
+      
+      <div id="receiverContent" class="card" style="display: none;">
+        <video id="liveVideo" autoplay playsinline></video>
+        <div id="fileContent" style="display: none;"></div>
+      </div>
+      
+      <canvas id="scanCanvas" style="display: none;"></canvas>
+      
+      <div class="progress-container card">
+        <div id="progressBarContainer"><div id="progressBar"></div></div>
+        <div class="transfer-stats">
+          <div>Progress: <span id="progressPercent">0%</span></div>
+          <div class="speed-indicator">Avg: <span id="transferSpeed">0.0 KB/s</span></div>
+        </div>
+        
+        <!-- Chunk progress tracking -->
+        <div class="chunk-progress-label">
+          <span>Chunks decoded:</span>
+        </div>
+        <div id="chunkProgressBarContainer">
+          <div id="chunkProgressBar">
+            <div id="chunkProgressOverlay"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="debug-container card">
+        <div class="debug-header">
+          <h4>TX Info Log</h4>
+          <label class="switch">
+            <input type="checkbox" id="debugToggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        
+        <div id="debugContent" style="display: none;">
+          <div class="status" id="status">Click "Start Receiving" to begin</div>
+          <div id="result"></div>
+          <pre id="debug"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./vendors/qrcode.min.js"></script>
+  <script src="./vendors/jsQR.js"></script>
+  <script src="./vendors/pako.min.js"></script>
+  <script type="module">
+    import { QRStream } from './lib/qr-stream.js';
+    
+    // Track if we've completed a reception
+    let receptionComplete = false;
+    
+    // Store file metadata during transmission/reception
+    let currentFileMetadata = {
+      name: null,
+      type: null,
+      originalName: null
+    };
+
+    // Create an array to track decoded chunks
+    let decodedChunks = [];
+    let totalChunks = 0;
+
+    const config = {
+      chunkSize: 800,
+      redundancy: 1.0,
+      fps: 15,
+      maxFileSize: 10 * 1024 * 1024,
+      solitonC: 0.03,
+      solitonDelta: 0.01,
+      endlessFountain: true,
+      debugCallback: (msg) => {
+        const debug = document.getElementById('debug');
+        debug.innerText += `${msg}\n`;
+        debug.scrollTop = debug.scrollHeight;
+        
+        // Extract chunk decoding information from debug logs
+        if (msg.includes('Source chunk')) {
+          try {
+            const chunkMatch = msg.match(/Source chunk (\d+)\/(\d+)/);
+            if (chunkMatch && chunkMatch[1] && chunkMatch[2]) {
+              const chunkIndex = parseInt(chunkMatch[1]);
+              const totalChunkCount = parseInt(chunkMatch[2]);
+              
+              // Update total chunks if needed
+              if (totalChunkCount > totalChunks) {
+                totalChunks = totalChunkCount;
+                // Initialize array if needed
+                if (decodedChunks.length === 0) {
+                  decodedChunks = new Array(totalChunks).fill(false);
+                }
+              }
+              
+              // Mark this chunk as decoded
+              if (chunkIndex < decodedChunks.length) {
+                decodedChunks[chunkIndex] = true;
+                updateChunkProgress();
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing chunk information:', error);
+          }
+        }
+        
+        // Extract filename from metadata debugging
+        if (msg.includes('📋 Metadata:')) {
+          try {
+            const nameMatch = msg.match(/Metadata: ([^,]+)/);
+            if (nameMatch && nameMatch[1]) {
+              const extractedName = nameMatch[1].trim();
+              if (extractedName) {
+                currentFileMetadata.originalName = extractedName;
+                console.log('Extracted filename from metadata:', extractedName);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting filename from metadata log:', error);
+          }
+        }
+        
+        // Extract filename from status messages
+        if (msg.includes('✅ Image:') || msg.includes('✅ File:') || 
+            msg.includes('✅ Text:') || msg.includes('✅ Downloaded:') || 
+            msg.includes('✅ PDF:')) {
+          try {
+            const filenameMatch = msg.match(/✅\s+\w+:\s+([^(]+)/);
+            if (filenameMatch && filenameMatch[1]) {
+              const extractedName = filenameMatch[1].trim();
+              if (extractedName) {
+                currentFileMetadata.originalName = extractedName;
+                console.log('Extracted filename from status:', extractedName);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting filename from status log:', error);
+          }
+        }
+        
+        // Look for completion messages in the debug log
+        if (msg.includes('File reception complete') || 
+            msg.includes('100% complete') || 
+            msg.includes('Successfully decoded')) {
+          receptionComplete = true;
+          
+          // Force the progress to 100%
+          document.getElementById('progressBar').style.width = '100%';
+          document.getElementById('progressPercent').innerText = '100%';
+          
+          // Show download button
+          document.getElementById('downloadBtn').style.display = 'inline-flex';
+          document.getElementById('startReceiveBtn').textContent = 'Start Receiving';
+          document.getElementById('startReceiveBtn').disabled = false;
+          document.getElementById('startReceiveBtn').classList.remove('stop-button');
+          document.getElementById('startReceiveBtn').classList.add('primary-button');
+          
+          // Ensure video is hidden and file content is shown
+          document.getElementById('liveVideo').style.display = 'none';
+          document.getElementById('fileContent').style.display = 'block';
+          
+          // Stop camera
+          if (document.getElementById('liveVideo').srcObject) {
+            document.getElementById('liveVideo').srcObject.getTracks().forEach(track => track.stop());
+          }
+        }
+      },
+      statusCallback: (msg) => {
+        document.getElementById('status').innerText = msg;
+        
+        // Extract filename from status messages
+        if (msg.includes('✅ Image:') || msg.includes('✅ File:') || 
+            msg.includes('✅ Text:') || msg.includes('✅ Downloaded:') || 
+            msg.includes('✅ PDF:')) {
+          try {
+            const filenameMatch = msg.match(/✅\s+\w+:\s+([^(]+)/);
+            if (filenameMatch && filenameMatch[1]) {
+              const extractedName = filenameMatch[1].trim();
+              if (extractedName) {
+                currentFileMetadata.originalName = extractedName;
+                console.log('Extracted filename from status callback:', extractedName);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting filename:', error);
+          }
+        }
+      },
+      progressCallback: (pct) => {
+        document.getElementById('progressBar').style.width = `${pct}%`;
+        document.getElementById('progressPercent').innerText = `${pct}%`;
+        
+        // Force to 100% if we detect completion in debug logs
+        if (receptionComplete && pct > 90) {
+          pct = 100;
+          document.getElementById('progressBar').style.width = '100%';
+          document.getElementById('progressPercent').innerText = '100%';
+          
+          // Also update chunk progress to 100%
+          document.getElementById('chunkProgressOverlay').style.width = '100%';
+          document.getElementById('decodedChunkCount').innerText = `${totalChunks}/${totalChunks} chunks`;
+        }
+        
+        // Show download button when complete
+        if (pct >= 100) {
+          document.getElementById('downloadBtn').style.display = 'inline-flex';
+          document.getElementById('startReceiveBtn').textContent = 'Start Receiving';
+          document.getElementById('startReceiveBtn').disabled = false;
+          
+          // Ensure video is hidden and file content is shown
+          document.getElementById('liveVideo').style.display = 'none';
+          document.getElementById('fileContent').style.display = 'block';
+          
+          // Stop camera when complete
+          if (document.getElementById('liveVideo').srcObject) {
+            document.getElementById('liveVideo').srcObject.getTracks().forEach(track => track.stop());
+          }
+          
+          // Make sure receiver content is visible to show the result
+          document.getElementById('receiverContent').style.display = 'block';
+        }
+      },
+      
+      debugCallback: (msg) => {
+        const debug = document.getElementById('debug');
+        debug.innerText += `${msg}\n`;
+        debug.scrollTop = debug.scrollHeight;
+        
+        // Extract chunk decoding information from debug logs
+        if (msg.includes('Source chunk')) {
+          try {
+            const chunkMatch = msg.match(/Source chunk (\d+)\/(\d+)/);
+            if (chunkMatch && chunkMatch[1] && chunkMatch[2]) {
+              const chunkIndex = parseInt(chunkMatch[1]);
+              const totalChunkCount = parseInt(chunkMatch[2]);
+              
+              // Update total chunks if needed
+              if (totalChunkCount > totalChunks) {
+                totalChunks = totalChunkCount;
+                // Initialize array if needed
+                if (decodedChunks.length === 0) {
+                  decodedChunks = new Array(totalChunks).fill(false);
+                }
+              }
+              
+              // Mark this chunk as decoded
+              if (chunkIndex < decodedChunks.length) {
+                decodedChunks[chunkIndex] = true;
+                updateChunkProgress();
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing chunk information:', error);
+          }
+        }
+        
+        // Extract filename from metadata debugging
+        if (msg.includes('📋 Metadata:')) {
+          try {
+            const nameMatch = msg.match(/Metadata: ([^,]+)/);
+            if (nameMatch && nameMatch[1]) {
+              const extractedName = nameMatch[1].trim();
+              if (extractedName) {
+                currentFileMetadata.originalName = extractedName;
+                console.log('Extracted filename from metadata:', extractedName);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting filename from metadata log:', error);
+          }
+        }
+        
+        // Extract filename from status messages
+        if (msg.includes('✅ Image:') || msg.includes('✅ File:') || 
+            msg.includes('✅ Text:') || msg.includes('✅ Downloaded:') || 
+            msg.includes('✅ PDF:')) {
+          try {
+            const filenameMatch = msg.match(/✅\s+\w+:\s+([^(]+)/);
+            if (filenameMatch && filenameMatch[1]) {
+              const extractedName = filenameMatch[1].trim();
+              if (extractedName) {
+                currentFileMetadata.originalName = extractedName;
+                console.log('Extracted filename from status:', extractedName);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting filename from status log:', error);
+          }
+        }
+        
+        // Look for completion messages in the debug log
+        if (msg.includes('File reception complete') || 
+            msg.includes('100% complete') || 
+            msg.includes('Successfully decoded')) {
+          receptionComplete = true;
+          
+          // Force the progress to 100%
+          document.getElementById('progressBar').style.width = '100%';
+          document.getElementById('progressPercent').innerText = '100%';
+          
+          // Show download button
+          document.getElementById('downloadBtn').style.display = 'inline-flex';
+          document.getElementById('startReceiveBtn').textContent = 'Start Receiving';
+          document.getElementById('startReceiveBtn').disabled = false;
+          document.getElementById('startReceiveBtn').classList.remove('stop-button');
+          document.getElementById('startReceiveBtn').classList.add('primary-button');
+          
+          // Ensure video is hidden and file content is shown
+          document.getElementById('liveVideo').style.display = 'none';
+          document.getElementById('fileContent').style.display = 'block';
+          
+          // Stop camera
+          if (document.getElementById('liveVideo').srcObject) {
+            document.getElementById('liveVideo').srcObject.getTracks().forEach(track => track.stop());
+          }
+        }
+      },
+      
+      resultCallback: (html) => {
+        document.getElementById('result').innerHTML = html;
+        document.getElementById('fileContent').innerHTML = html;
+        
+        // Try to extract filename from QR metadata if available
+        if (qrStream.fileName) {
+          currentFileMetadata.originalName = qrStream.fileName;
+          console.log('Got filename directly from QRStream:', qrStream.fileName);
+        }
+      },
+      speedCallback: (speed) => {
+        document.getElementById('transferSpeed').innerText = `${speed} KB/s`;
+      },
+      errorCallback: () => {
+        document.getElementById('startReceiveBtn').disabled = false;
+        document.getElementById('startReceiveBtn').textContent = 'Start Receiving';
+      }
+    };
+
+    const qrStream = new QRStream(config);
+    
+    // Function to render individual chunk markers in the progress bar
+    function renderChunkMarkers() {
+      if (totalChunks === 0 || decodedChunks.length === 0) return;
+      
+      const progressBar = document.getElementById('chunkProgressBar');
+      
+      // Remove any existing markers
+      const existingMarkers = progressBar.querySelectorAll('.chunk-marker');
+      existingMarkers.forEach(marker => marker.remove());
+      
+      // Create a marker for each decoded chunk
+      for (let i = 0; i < decodedChunks.length; i++) {
+        if (decodedChunks[i]) {
+          const marker = document.createElement('div');
+          marker.className = 'chunk-marker';
+          
+          // Position the marker at the appropriate spot in the progress bar
+          const position = (i / totalChunks) * 100;
+          marker.style.left = position + '%';
+          
+          // Add the marker to the progress bar
+          progressBar.appendChild(marker);
+        }
+      }
+    }
+
+    // Update the chunk progress bar function to include marker rendering
+    function updateChunkProgress() {
+      if (totalChunks === 0) return;
+      
+      // Count how many chunks are decoded
+      const decodedCount = decodedChunks.filter(Boolean).length;
+      
+      // Update the progress bar
+      const percentage = (decodedCount / totalChunks) * 100;
+      document.getElementById('chunkProgressOverlay').style.width = percentage + '%';
+      
+      // Render the individual chunk markers
+      renderChunkMarkers();
+    }
+
+    // Make QR code a perfect square that maximizes available space
+    function resizeQRCode(isFullscreen = false) {
+      const container = document.querySelector('.qr-container');
+      if (!container) return;
+      
+      let width = container.clientWidth;
+      let size;
+      
+      if (isFullscreen) {
+        // In fullscreen mode, use most of the viewport height
+        size = Math.min(width, window.innerHeight * 0.7);
+      } else {
+        // Normal mode
+        size = Math.min(width, window.innerHeight * 0.5);
+      }
+      
+      const canvas = document.getElementById('sendCanvas');
+      canvas.width = size;
+      canvas.height = size;
+      
+      // If we're already sending, refresh the QR code
+      if (qrStream.isSending && window.currentSendingFile) {
+        // Just redraw the current frame
+        if (qrStream.currentFrame) {
+          qrStream.displayFrame(canvas, qrStream.currentFrame);
+        }
+      }
+    }
+    
+    // Resize QR code on load and when window is resized
+    window.addEventListener('load', () => resizeQRCode(false));
+    window.addEventListener('resize', () => {
+      const isFullscreen = document.getElementById('qrDisplayCard').classList.contains('fullscreen');
+      resizeQRCode(isFullscreen);
+    });
+
+    window.switchTab = function(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(button => button.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+
+      if (tabId !== 'receiver' && qrStream.isReceiving) {
+        qrStream.stopReceiving();
+        document.getElementById('startReceiveBtn').textContent = 'Start Receiving';
+        document.getElementById('startReceiveBtn').disabled = false;
+        document.getElementById('startReceiveBtn').classList.remove('stop-button');
+        document.getElementById('startReceiveBtn').classList.add('primary-button');
+        
+        if (document.getElementById('liveVideo').srcObject) {
+          document.getElementById('liveVideo').srcObject.getTracks().forEach(track => track.stop());
+        }
+      }
+      
+      // Stop sending if switching away from sender tab
+      if (tabId !== 'sender' && qrStream.isSending) {
+        qrStream.stopSending();
+        document.getElementById('sendBtn').textContent = 'Start Sending';
+      }
+    };
+
+    window.updateFileName = function() {
+      const fileInput = document.getElementById('fileInput');
+      const selectedFile = document.getElementById('selectedFile');
+      const qrDisplayCard = document.getElementById('qrDisplayCard');
+      
+      if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        if (fileName.length <= 20) {
+          selectedFile.textContent = fileName;
+        } else {
+          // Format: first 5 chars + ... + extension
+          const extension = fileName.split('.').pop();
+          const truncated = fileName.substring(0, 5) + '...' + '.' + extension;
+          selectedFile.textContent = truncated;
+          selectedFile.title = fileName; // Show full filename on hover
+        }
+        selectedFile.classList.add('file-selected');
+      } else {
+        selectedFile.textContent = 'No file selected';
+        selectedFile.classList.remove('file-selected');
+        qrDisplayCard.style.display = 'none';
+        
+        // Hide restart button if no file selected
+        document.getElementById('restartBtn').style.display = 'none';
+        document.getElementById('magicSignalBtn').style.display = 'none';
+      }
+    };
+
+    // --- Send Mode toggle logic (replacing old Send Text toggle) ---
+    const sendModeToggle = document.getElementById('sendModeToggle');
+    const sendTextArea = document.getElementById('sendTextArea');
+    const fileInputRow = document.getElementById('fileInputRow');
+    const fileInput = document.getElementById('fileInput');
+    const sendModeLabels = document.querySelectorAll('.send-mode-label');
+
+    // Update the UI based on which mode is active
+    function updateSendMode(isFileMode) {
+      if (isFileMode) {
+        // File Mode
+        sendTextArea.style.display = 'none';
+        fileInputRow.style.display = 'flex';
+        fileInput.disabled = false;
+        
+        // Update active label
+        sendModeLabels[0].classList.remove('active');
+        sendModeLabels[1].classList.add('active');
+      } else {
+        // Text Mode
+        sendTextArea.style.display = 'block';
+        fileInputRow.style.display = 'none';
+        fileInput.disabled = true;
+        fileInput.value = '';
+        document.getElementById('selectedFile').textContent = 'No file selected';
+        document.getElementById('selectedFile').classList.remove('file-selected');
+        
+        // Update active label
+        sendModeLabels[0].classList.add('active');
+        sendModeLabels[1].classList.remove('active');
+      }
+    }
+
+    // Make the labels directly toggle the mode (no checkbox needed)
+    sendModeLabels[0].addEventListener('click', function() {
+      updateSendMode(false);
+      sendModeToggle.checked = false; // Keep the hidden toggle in sync
+    });
+
+    sendModeLabels[1].addEventListener('click', function() {
+      updateSendMode(true);
+      sendModeToggle.checked = true; // Keep the hidden toggle in sync
+    });
+
+    // Initialize with file mode
+    updateSendMode(true);
+
+    window.toggleSending = function() {
+      const button = document.getElementById('sendBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const magicSignalBtn = document.getElementById('magicSignalBtn');
+      const qrDisplayCard = document.getElementById('qrDisplayCard');
+      const senderInputCard = document.getElementById('senderInputCard');
+      const advancedSettingsDetails = document.getElementById('advancedSettingsDetails');
+      const fullscreenControls = document.getElementById('fullscreenControls');
+      
+      if (qrStream.isSending) {
+        // Stop sending
+        qrStream.stopSending();
+        
+        // Reset normal view
+        button.textContent = 'Start Sending';
+        button.classList.remove('stop-button');
+        button.classList.add('primary-button');
+        
+        // Switch back to normal view
+        senderInputCard.style.display = 'block';
+        advancedSettingsDetails.style.display = 'block';
+        fullscreenControls.style.display = 'none';
+        qrDisplayCard.classList.remove('fullscreen');
+        qrDisplayCard.style.display = 'none';
+        // document.querySelector('h3').style.display = 'block'; // Removed: no h3 in sender
+        document.querySelector('h2').style.display = 'block';
+        document.querySelector('.tabs').style.display = 'block'; // Show tabs again
+        
+        // Clear file selection
+        document.getElementById('fileInput').value = '';
+        document.getElementById('selectedFile').textContent = 'No file selected';
+        document.getElementById('selectedFile').classList.remove('file-selected');
+        
+        // Hide buttons
+        restartBtn.style.display = 'none';
+        magicSignalBtn.style.display = 'none';
+        
+        // Clear the canvas
+        const canvas = document.getElementById('sendCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        window.currentSendingFile = null;
+        
+        console.log('Sending stopped and UI reset');
+      } else {
+        // Start sending
+        let file;
+        let isTextMode = !sendModeToggle.checked; // Changed from old toggle
+        if (isTextMode) {
+          const text = sendTextArea.value;
+          if (!text) {
+            alert('Please enter some text to send.');
+            return;
+          }
+          // Create a Blob for the text
+          file = new File([text], 'qrbitr_text_send.txt', { type: 'text/plain' });
+        } else {
+          file = document.getElementById('fileInput').files[0];
+          if (!file) {
+            alert('Please select a file first');
+            return;
+          }
+        }
+        
+        // Store file metadata for receivers
+        currentFileMetadata.originalName = file.name;
+        currentFileMetadata.type = file.type;
+        
+        const canvas = document.getElementById('sendCanvas');
+        const redundancy = parseInt(document.getElementById('redundancySlider').value) / 100;
+        const chunkSize = parseInt(document.getElementById('chunkSizeSlider').value);
+        const fps = parseInt(document.getElementById('fpsSlider').value);
+        const endlessFountain = document.getElementById('endlessFountainCheck').checked;
+        const solitonDelta = parseFloat(document.getElementById('solitonDeltaSlider').value);
+        
+        // Hide tabs before going fullscreen
+        document.querySelector('.tabs').style.display = 'none';
+        
+        qrStream.redundancy = redundancy;
+        qrStream.chunkSize = chunkSize;
+        qrStream.fps = fps;
+        qrStream.endlessFountain = endlessFountain;
+        qrStream.solitonParams.delta = solitonDelta;
+        qrStream.fileMetadata = {
+          name: file.name,
+          type: file.type
+        };
+        
+        // Store the current file for potential resize events
+        window.currentSendingFile = file;
+        
+        try {
+          // Switch to fullscreen view
+          senderInputCard.style.display = 'none';
+          advancedSettingsDetails.style.display = 'none';
+          qrDisplayCard.style.display = 'block';
+          qrDisplayCard.classList.add('fullscreen');
+          fullscreenControls.style.display = 'block';
+          // document.querySelector('h3').style.display = 'none'; // Removed: no h3 in sender
+          document.querySelector('h2').style.display = 'none';
+          
+          // Update canvas size for fullscreen mode
+          resizeQRCode(true);
+          
+          qrStream.startSending(file, canvas);
+          button.textContent = 'Stop';
+          button.classList.remove('primary-button');
+          button.classList.add('stop-button');
+          
+          // Show buttons
+          restartBtn.style.display = 'inline-flex';
+          magicSignalBtn.style.display = 'inline-flex';
+        } catch (error) {
+          alert('Error starting transmission: ' + error.message);
+          console.error(error);
+          
+          // Reset UI if sending fails
+          senderInputCard.style.display = 'block';
+          advancedSettingsDetails.style.display = 'block';
+          qrDisplayCard.style.display = 'none';
+          fullscreenControls.style.display = 'none';
+          // document.querySelector('h3').style.display = 'block'; // Removed: no h3 in sender
+          document.querySelector('h2').style.display = 'block';
+        }
+      }
+    };
+    
+    window.restartSending = function(percentage = 0) {
+      if (!window.currentSendingFile) {
+        alert('No file is currently being sent');
+        return;
+      }
+      
+      try {
+        // Stop current sending
+        if (qrStream.isSending) {
+          qrStream.stopSending();
+        }
+        
+        // Restart from specified percentage
+        const canvas = document.getElementById('sendCanvas');
+        qrStream.restartSending(canvas, percentage);
+        
+        // Update button states
+        document.getElementById('sendBtn').textContent = 'Stop';
+        document.getElementById('sendBtn').classList.remove('primary-button');
+        document.getElementById('sendBtn').classList.add('stop-button');
+        
+        console.log(`Restarted sending from ${percentage}% position`);
+      } catch (error) {
+        alert('Error restarting transmission: ' + error.message);
+        console.error(error);
+      }
+    };
+
+    window.toggleReceiving = function() {
+      const video = document.getElementById('liveVideo');
+      const canvas = document.getElementById('scanCanvas');
+      const button = document.getElementById('startReceiveBtn');
+      const receiverContent = document.getElementById('receiverContent');
+      
+      if (qrStream.isReceiving) {
+        // Stop receiving
+        try {
+          qrStream.stopReceiving();
+        } catch (error) {
+          console.error("Error stopping reception:", error);
+        }
+        
+        button.textContent = 'Start Receiving';
+        button.classList.remove('stop-button');
+        button.classList.add('primary-button');
+        
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('status').innerText = 'Click "Start Receiving" to begin';
+        
+        // Only hide if we didn't successfully receive a file
+        const fileContent = document.getElementById('fileContent');
+        if (fileContent.children.length === 0) {
+          receiverContent.style.display = 'none';
+        }
+      } else {
+        button.textContent = 'Stop Receiving';
+        button.classList.remove('primary-button');
+        button.classList.add('stop-button');
+        
+        document.getElementById('downloadBtn').style.display = 'none';
+        document.getElementById('liveVideo').style.display = 'block';
+        document.getElementById('fileContent').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressPercent').innerText = '0%';
+        document.getElementById('result').innerHTML = '';
+        document.getElementById('fileContent').innerHTML = '';
+        
+        // Reset chunk tracking
+        decodedChunks = [];
+        totalChunks = 0;
+        document.getElementById('chunkProgressOverlay').style.width = '0%';
+        
+        // Also clear any chunk markers
+        const progressBar = document.getElementById('chunkProgressBar');
+        const existingMarkers = progressBar.querySelectorAll('.chunk-marker');
+        existingMarkers.forEach(marker => marker.remove());
+        
+        // Reset file metadata and completion tracking
+        currentFileMetadata = {
+          name: null,
+          type: null,
+          originalName: null
+        };
+        receptionComplete = false;
+        
+        // Show receiver content with camera
+        receiverContent.style.display = 'block';
+        
+        // Enable peeling and gaussian by default
+        try {
+          qrStream.startReceiving(video, canvas, true, true);
+        } catch (error) {
+          alert('Error starting camera: ' + error.message);
+          console.error(error);
+          button.textContent = 'Start Receiving';
+          button.classList.remove('stop-button');
+          button.classList.add('primary-button');
+          receiverContent.style.display = 'none';
+        }
+      }
+    };
+    
+    window.downloadReceivedFile = function() {
+      console.log('Download requested, file metadata:', currentFileMetadata);
+      console.log('QRStream filename:', qrStream.fileName);
+
+      // Prioritize filename from QRStream first
+      const fileName = qrStream.fileName || currentFileMetadata.originalName || 'downloaded_file';
+      console.log('Using filename for download:', fileName);
+
+      // First try to find a download link in the result area
+      const downloadLink = document.querySelector('#result a[download], #fileContent a[download]');
+      if (downloadLink) {
+        // Create a new download link with the original filename
+        const tempLink = document.createElement('a');
+        tempLink.href = downloadLink.href;
+        tempLink.download = fileName;
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+        return;
+      }
+
+      // If no direct download link, try to find a data URL or blob URL in an image or iframe
+      const mediaElement = document.querySelector('#fileContent img[src^="data:"], #fileContent img[src^="blob:"], #fileContent iframe[src^="data:"], #fileContent iframe[src^="blob:"]');
+      if (mediaElement) {
+        console.log('Found media element:', mediaElement.tagName);
+
+        // Create a temporary anchor to trigger the download
+        const tempLink = document.createElement('a');
+        tempLink.href = mediaElement.src;
+
+        // Ensure we have a proper filename with extension
+        let downloadName = fileName;
+        if (!downloadName.includes('.')) {
+          // Try to infer extension from MIME type
+          const mimeToExt = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/svg+xml': '.svg',
+            'text/html': '.html',
+            'text/plain': '.txt',
+            'application/pdf': '.pdf'
+          };
+
+          const type = currentFileMetadata.type || '';
+          const extension = mimeToExt[type] || '';
+
+          if (extension) {
+            downloadName = `${fileName}${extension}`;
+            console.log('Adding extension to filename:', downloadName);
+          }
+        }
+
+        tempLink.download = downloadName;
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+        return;
+      }
+
+      // --- FIX: If result is plain text, offer to download as .txt ---
+      // Try to get text content from #result or #fileContent
+      const resultElem = document.getElementById('result');
+      const fileContentElem = document.getElementById('fileContent');
+      let textContent = '';
+
+      // Prefer fileContent if visible, else result
+      if (fileContentElem && fileContentElem.innerText && fileContentElem.innerText.trim().length > 0) {
+        textContent = fileContentElem.innerText.trim();
+      } else if (resultElem && resultElem.innerText && resultElem.innerText.trim().length > 0) {
+        textContent = resultElem.innerText.trim();
+      }
+
+      if (textContent) {
+        // Use .txt extension if not present
+        let downloadName = fileName;
+        if (!downloadName.endsWith('.txt')) {
+          downloadName += '.txt';
+        }
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const tempLink = document.createElement('a');
+        tempLink.href = url;
+        tempLink.download = downloadName;
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
+      }
+
+      // If we reach here, alert the user that we couldn't find a downloadable item
+      alert('No downloadable content found.');
+    };
+
+    // Debug toggle functionality
+    document.getElementById('debugToggle').addEventListener('change', function() {
+      document.getElementById('debugContent').style.display = this.checked ? 'block' : 'none';
+    });
+    
+    window.sendMagicSignal = function() {
+      if (!qrStream.isSending || !window.currentSendingFile) {
+        alert('Please start sending a file first');
+        return;
+      }
+      
+      try {
+        // Tell QRStream to display trailer frames
+        qrStream.sendTrailerFrames();
+        console.log('Magic Signal sent - Displaying trailer frames');
+      } catch (error) {
+        console.error('Error sending magic signal:', error);
+      }
+    };
+
+    // Make the sharing functions available to the window object
+    window.shareApp = function() {
+      const shareData = {
+        title: 'QRbitr - QR Bit Data Transfer',
+        text: 'Send and receive data via QR codes with QRBitr!',
+        url: window.location.href
+      };
+      
+      if (navigator.share) {
+        navigator.share(shareData)
+          .then(() => {
+            // Use alert instead of toast
+            console.log('Shared successfully!');
+          })
+          .catch((err) => {
+            console.error('Error sharing:', err);
+            if (err.name !== 'AbortError') {
+              fallbackShare();
+            }
+          });
+      } else {
+        fallbackShare();
+      }
+    };
+    
+    window.fallbackShare = function() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(window.location.href)
+          .then(() => {
+            alert('URL copied to clipboard! Share it with your friends.');
+          })
+          .catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopyUsingExecCommand();
+          });
+      } else {
+        fallbackCopyUsingExecCommand();
+      }
+    };
+    
+    window.fallbackCopyUsingExecCommand = function() {
+      try {
+        const dummy = document.createElement('textarea');
+        dummy.style.position = 'fixed';
+        dummy.style.top = '0';
+        dummy.style.left = '0';
+        dummy.style.width = '1px';
+        dummy.style.height = '1px';
+        dummy.style.opacity = '0';
+        dummy.value = window.location.href;
+        document.body.appendChild(dummy);
+        dummy.style.visibility = 'visible';
+        dummy.focus();
+        dummy.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(dummy);
+        if (successful) {
+          alert('URL copied to clipboard! Share it with your friends.');
+        } else {
+          showManualShareInstructions();
+        }
+      } catch (err) {
+        console.error('execCommand error:', err);
+        showManualShareInstructions();
+      }
+    };
+    
+    window.showManualShareInstructions = function() {
+      // Create modal for manual copy
+      const modal = document.createElement('div');
+      modal.className = 'share-modal';
+      const shareUrl = window.location.href;
+      
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">Share QRBitr</div>
+          <p>Copy this URL to share:</p>
+          <div class="url-container">
+            <input type="text" readonly value="${shareUrl}" class="url-input" onclick="this.select()">
+            <button id="copy-btn" class="copy-btn">Copy</button>
+          </div>
+          <button id="close-modal" class="close-btn">Close</button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      document.getElementById('close-modal').onclick = () => document.body.removeChild(modal);
+      document.getElementById('copy-btn').onclick = () => {
+        const input = modal.querySelector('input');
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(modal);
+        alert('URL copied to clipboard!');
+      };
+    };
+
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(function(reg) {
+            console.log('Service worker registered.', reg);
+          })
+          .catch(function(err) {
+            console.warn('Service worker registration failed:', err);
+          });
+      });
+    }
+    
+    // PWA installation handling
+    let deferredPrompt;
+    let isRunningAsPWA = false;
+    let canInstall = false;
+
+    // Check if running as PWA
+    function checkIfRunningAsPWA() {
+      // Method 1: Check if display-mode is standalone or fullscreen
+      const isDisplayModePWA = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.matchMedia('(display-mode: fullscreen)').matches ||
+                             window.matchMedia('(display-mode: minimal-ui)').matches;
+      
+      // Method 2: Check for iOS PWA
+      const isIOSPWA = window.navigator.standalone === true;
+      
+      // If either condition is true, we're in PWA mode
+      isRunningAsPWA = isDisplayModePWA || isIOSPWA;
+      
+      console.log('Running as PWA:', isRunningAsPWA);
+      return isRunningAsPWA;
+    }
+
+    // Initialize PWA detection
+    window.addEventListener('load', function() {
+      checkIfRunningAsPWA();
+      
+      // Show or hide install button based on PWA status
+      if (isRunningAsPWA) {
+        document.getElementById('installButton').style.display = 'none';
+      } else {
+        document.getElementById('installButton').style.display = 'flex';
+      }
+      
+      // Listen for display-mode changes
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
+        if (evt.matches) {
+          isRunningAsPWA = true;
+          canInstall = false;
+          document.getElementById('installButton').style.display = 'none';
+        }
+      });
+      
+      // Setup install button click handler
+      document.getElementById('installButton').addEventListener('click', window.installPWA);
+    });
+
+    // Handle beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault();
+      // Save the event so it can be triggered later
+      deferredPrompt = e;
+      // Only show install button if not already running as PWA
+      if (!isRunningAsPWA) {
+        canInstall = true;
+        document.getElementById('installButton').style.display = 'flex';
+      }
+    });
+
+    // Listen for app installed event
+    window.addEventListener('appinstalled', (evt) => {
+      canInstall = false;
+      document.getElementById('installButton').style.display = 'none';
+      alert('QRbitr installed successfully!');
+    });
+
+    // Install PWA functionality
+    window.installPWA = function() {
+      // If we're already running as a PWA, no need to show installation instructions
+      if (isRunningAsPWA) {
+        alert('QRbitr is already installed!');
+        return;
+      }
+      
+      if (deferredPrompt) {
+        // Show the install prompt
+        deferredPrompt.prompt();
+        
+        // Wait for the user to respond to the prompt
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            alert('Thank you for installing QRbitr!');
+            document.getElementById('installButton').style.display = 'none';
+            canInstall = false;
+          } else {
+            console.log('User dismissed the install prompt');
+          }
+          // Clear the saved prompt as it can't be used again
+          deferredPrompt = null;
+        });
+      } else {
+        // If no install prompt is available, show manual installation instructions
+        showInstallInstructions();
+      }
+    };
+
+    // Show installation instructions for various platforms
+    window.showInstallInstructions = function() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const isChrome = /Chrome/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      
+      let instructions = '';
+      
+      if (isIOS && isSafari) {
+        instructions = `
+          <ol style="list-style-type: decimal; padding-left: 20px; margin-bottom: 15px;">
+            <li>Tap the share button <span style="display: inline-block; padding: 2px 5px; background: #eee; border-radius: 4px;">⎙</span> at the bottom of your screen</li>
+            <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+            <li>Tap <strong>Add</strong> in the top right corner</li>
+          </ol>
+        `;
+      } else if (isAndroid && isChrome) {
+        instructions = `
+          <ol style="list-style-type: decimal; padding-left: 20px; margin-bottom: 15px;">
+            <li>Tap the menu button <span style="display: inline-block; padding: 2px 5px; background: #eee; border-radius: 4px;">⋮</span> in the top right</li>
+            <li>Tap <strong>Add to Home screen</strong></li>
+            <li>Follow the prompts to install</li>
+          </ol>
+        `;
+      } else {
+        instructions = `
+          <p style="margin-bottom: 10px;">To install this app:</p>
+          <ol style="list-style-type: decimal; padding-left: 20px; margin-bottom: 15px;">
+            <li>Open this site in Chrome or Safari on your mobile device</li>
+            <li>Access the browser's menu</li>
+            <li>Select the option to add to home screen or install</li>
+          </ol>
+        `;
+      }
+      
+      // Create the modal with installation instructions
+      const modal = document.createElement('div');
+      modal.className = 'share-modal';
+      
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">Install QRbitr</div>
+          ${instructions}
+          <button id="close-modal" class="close-btn">Got it</button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Add click listener to close the modal
+      document.getElementById('close-modal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+    };
+  </script>
+
+  <!-- Footer -->
+  <footer style="
+    text-align: center;
+    margin-top: 0rem; /* Reduce this value */
+    padding-bottom: 0.1rem; /* Adjust as needed */
+    opacity: 0.85;
+    font-size: 15px;
+    color: #222;
+    background: none;
+    ">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <div>
+        <span style="display: inline-block;">QRbitr © 2025 | <a href="https://github.com/austinwin/qrbitr" target="_blank" rel="noopener" style="color: #4285f4; text-decoration: underline; margin-left: 4px;">GitHub</a></span>
+      </div>
+      <p style="font-size: 13px; margin: 0.2em 0 0 0; opacity: 0.7; padding-left: 12px; padding-right: 12px;">Find QRbitr useful? <a href="https://buymeacoffee.com/austinwin" target="_blank" rel="noopener" style="color: #ffb300; text-decoration: underline; margin-left: 4px;">Support QRbitr</a> ❤️</p>
+    </div>
+  </footer>
+</body>
+</html>
