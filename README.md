@@ -22,6 +22,18 @@ No setup, no account, no Bluetooth pairing, no cables - just open it in a browse
 
 Because QRbitr runs entirely in your browser and operates offline, it leaves no server trace, requires no pairing, and is as simple as pointing a camera at a screen either through the online web app or pwa.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/0bb730fe-cd2c-4dc3-bdaa-f0a9229facea" width="23%" />
+  <img src="https://github.com/user-attachments/assets/91ea8a69-40f2-4302-b460-b932254f8f85" width="23%" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/561c89ef-af27-49e8-bced-5fe8c5e87fd2" width="23%" />
+  <img src="https://github.com/user-attachments/assets/10d6f351-d28e-4da9-9811-69ba1a94cdd5" width="23%" />
+</p>
+
+<img src="https://github.com/user-attachments/assets/a61e587d-2c2f-4641-bc68-a6056dd1a1d2" width="400" />
+
 ---
 
 ## Features
