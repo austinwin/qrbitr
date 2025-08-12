@@ -782,6 +782,274 @@ input:checked + .slider:before {
   }
 }
 
+    .chunk-marker {
+      position: absolute;
+      width: 2px;
+      height: 100%;
+      background-color: #00ff00; /* Bright green for visibility */
+      z-index: 10;
+    }
+    
+    #chunkProgressBar {
+      position: relative;
+      overflow: visible; /* Allow markers to be visible outside the bar */
+    }
+    
+    /* Share button styles */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .share-button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .share-button:hover {
+      background-color: #3367d6;
+    }
+
+    /* Install button styles */
+    .install-button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .install-button:hover {
+      background-color: #3d8b40;
+    }
+    
+    /* Heart button styles */
+    .heart-button {
+      background-color: #ffb300;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      transition: background-color 0.2s;
+      text-decoration: none;
+    }
+    .heart-button:hover {
+      background-color: #ff9800;
+      color: white;
+      text-decoration: none;
+    }
+    
+    /* Modal styles for fallback share */
+    .share-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+    }
+    
+    .modal-header {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    
+    .url-container {
+      position: relative;
+      margin: 15px 0;
+    }
+    
+    .url-input {
+      width: 100%;
+      padding: 8px;
+      padding-right: 60px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    
+    .copy-btn {
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .close-btn {
+      width: 100%;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    
+    /* Reduce spacing between tabs and content */
+    .tabs {
+      margin-bottom: 10px; /* Reduced from default */
+    }
+    
+    .tab-content h3 {
+      margin-top: 0; /* Remove top margin from h3 in tab content */
+      margin-bottom: 10px; /* Add a small bottom margin */
+    }
+    
+    /* Make the tabs stick closer to content */
+    .tab-content {
+      padding-top: 5px; /* Add small padding at top of content */
+    }
+    
+    /* New styles for send mode toggle switch - updated to segmented control style */
+    .send-mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #4285f4;
+      overflow: hidden;
+      width: fit-content;
+      min-width: 200px;
+    }
+    
+    .send-mode-label {
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #4285f4;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-align: center;
+      flex: 1;
+      background-color: white;
+      margin: 0;
+    }
+    
+    .send-mode-label.active {
+      color: white;
+      background-color: #4285f4;
+    }
+    
+    /* Hide the default checkbox/toggle */
+    .mode-switch {
+      display: none;
+    }
+    
+    #sendTextArea {
+      width: 100%;
+      min-height: 120px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: inherit;
+      margin-bottom: 15px;
+      resize: vertical;
+    }
+    
+    /* Hide the file input row by default */
+    .file-input-row {
+      display: none;
+    }
+    
+    /* Show the file input row when in Send File mode */
+    #sendModeToggle:not(:checked) + .file-input-row {
+      display: flex;
+    }
+    
+    /* Show the text area when in Send Text mode */
+    #sendModeToggle:checked ~ #sendTextArea {
+      display: block;
+    }
+    
+    /* Limit max height for result and file content containers, show scrollbar if needed */
+    #result, #fileContent {
+      max-height: 300px;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #4285f4 #e0e0e0;
+    }
+    #result::-webkit-scrollbar, #fileContent::-webkit-scrollbar {
+      width: 8px;
+      background: #e0e0e0;
+    }
+    #result::-webkit-scrollbar-thumb, #fileContent::-webkit-scrollbar-thumb {
+      background: #4285f4;
+      border-radius: 4px;
+    }
+
+    /* Footer styles */
+    footer {
+      text-align: center;
+      margin-top: 1rem; /* Reduce this value */
+      padding-bottom: 1rem; /* Adjust as needed */
+      opacity: 0.85;
+      font-size: 15px;
+      color: #222;
+      background: none;
+    }
+    
+    footer div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    footer a {
+      color: #4285f4;
+      text-decoration: underline;
+      margin-left: 4px;
+    }
+    
+    footer p {
+      font-size: 13px;
+      margin: 0.5em 0 0 0;
+      opacity: 0.7;
+    }
 @media (max-width: 480px) {
   h2 {
     font-size: 1.3rem;
