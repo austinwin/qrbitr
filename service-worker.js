@@ -1,4 +1,4 @@
-const CACHE_NAME = "QRbitr-v2.1"; // Add versioning
+const CACHE_NAME = "QRbitr-v2.2"; // Add versioning
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -60,3 +60,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
