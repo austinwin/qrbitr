@@ -162,6 +162,61 @@ No build required. Can be hosted as static files for easy sharing.
 - Modern Chrome, Edge, Firefox.  
 - iOS Safari works but may have lower camera FPS.
 
+
+---
+
+## Protocol Usage
+
+### Minimal Example
+
+```js
+import { QRStream } from './lib/qr-stream.js';
+
+// Sending
+const sender = new QRStream({
+  debugCallback: console.log,
+  statusCallback: console.log
+});
+const fileInput = document.querySelector('#fileInput');
+const sendCanvas = document.querySelector('#sendCanvas');
+fileInput.onchange = () => {
+  sender.startSending(fileInput.files[0], sendCanvas);
+};
+
+// Receiving
+const receiver = new QRStream({
+  debugCallback: console.log,
+  statusCallback: console.log,
+  resultCallback: html => { document.getElementById('result').innerHTML = html; }
+});
+const video = document.querySelector('#video');
+const recvCanvas = document.querySelector('#recvCanvas');
+document.querySelector('#startReceive').onclick = () => {
+  receiver.startReceiving(video, recvCanvas);
+};
+```
+
+### Usage Breakdown
+
+#### Sending
+
+1. **Create a QRStream instance** with desired config and callbacks.
+2. **Call `startSending(file, canvas)`**:
+   - `file`: a `File` object (from `<input type="file">`).
+   - `canvas`: a `<canvas>` element to render QR codes.
+3. QR codes will be displayed on the canvas in a loop for scanning.
+
+#### Receiving
+
+1. **Create a QRStream instance** with desired config and callbacks.
+2. **Call `startReceiving(video, canvas)`**:
+   - `video`: a `<video>` element (camera preview).
+   - `canvas`: a `<canvas>` element (for internal decoding, not shown to user).
+3. Grant camera access and point at sender's QR codes.
+4. When transfer completes, the result is provided via the `resultCallback`.
+
+**Note:** All transfer logic is browser-only, no server required.
+
 ---
 
 ## License
