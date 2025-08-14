@@ -216,6 +216,106 @@ document.querySelector('#startReceive').onclick = () => {
 4. When transfer completes, the result is provided via the `resultCallback`.
 
 **Note:** All transfer logic is browser-only, no server required.
+---
+
+## More examples
+
+Below are compact examples showing common usage patterns and advanced operations.
+
+### 1) Minimal sender + receiver HTML (complete example)
+Use this as a starting point in a single page — pick a file to send, then point the receiver camera at the sender canvas.
+
+```html
+<!-- Minimal app: send + receive -->
+<input id="fileInput" type="file" />
+<button id="startSend">Start Send</button>
+<canvas id="sendCanvas" width="512" height="512"></canvas>
+
+<video id="video" autoplay playsinline style="width:240px;height:180px;"></video>
+<canvas id="recvCanvas" style="display:none;"></canvas>
+<button id="startReceive">Start Receive</button>
+
+<div id="status"></div>
+<div id="progress"></div>
+<div id="result"></div>
+
+<script type="module">
+  import { QRStream } from './lib/qr-stream.js';
+
+  // Sender
+  const sendCanvas = document.getElementById('sendCanvas');
+  const fileInput = document.getElementById('fileInput');
+  const sender = new QRStream({
+    fps: 10,
+    redundancy: 0.6,
+    debugCallback: msg => console.log('[SEND]', msg),
+    statusCallback: s => document.getElementById('status').innerText = s
+  });
+  document.getElementById('startSend').onclick = () => {
+    if (!fileInput.files[0]) return alert('Pick a file first');
+    sender.startSending(fileInput.files[0], sendCanvas);
+  };
+
+  // Receiver
+  const video = document.getElementById('video');
+  const recvCanvas = document.getElementById('recvCanvas');
+  const receiver = new QRStream({
+    debugCallback: msg => console.log('[RECV]', msg),
+    statusCallback: s => document.getElementById('status').innerText = s,
+    progressCallback: p => document.getElementById('progress').innerText = p + '%',
+    resultCallback: html => document.getElementById('result').innerHTML = html
+  });
+  document.getElementById('startReceive').onclick = () => {
+    receiver.startReceiving(video, recvCanvas);
+  };
+</script>
+```
+
+### 2) Programmatic control: pause/resume & restart from percentage
+You can stop the sender loop and restart from a percentage location in the prepared frames.
+
+```js
+// Stop sending temporarily
+sender.stopSending();
+
+// Resume sending from beginning
+sender.restartSending(sendCanvas, 0);
+
+// Resume sending from 25% into the data frames
+sender.restartSending(sendCanvas, 25);
+
+// Note: restartSending expects the same canvas and that startSending was called earlier
+```
+
+### 3) Send a short "trailer" burst to signal completion
+To explicitly mark the end of the transfer you can display the trailer frames. This is useful for receivers to trigger final decoding attempts.
+
+```js
+// Show trailer burst (pauses normal loop briefly)
+sender.sendTrailerFrames();
+```
+
+### 4) Advanced receive options: disable peeling or gaussian fallback
+Tune decoding strategy when initializing the receiver.
+
+```js
+// enablePeeling = false to skip peeling decoder
+// enableGaussian = true to allow gaussian elimination fallback
+receiver.startReceiving(video, recvCanvas, false, true);
+```
+
+### 5) Tuning knobs (what to change)
+- fps: frames-per-second the sender renders (lower helps unreliable cameras).
+- redundancy: fraction of extra fountain chunks (0.5 = 50% extra).
+- chunkSize: bytes per chunk (600–900 recommended).
+- solitonC / solitonDelta: LT code distribution parameters (advanced).
+
+Example config:
+
+```js
+const senderFast = new QRStream({ fps: 15, redundancy: 0.75, chunkSize: 800 });
+const receiverSlow = new QRStream({ debugCallback: console.log });
+```
 
 ---
 
