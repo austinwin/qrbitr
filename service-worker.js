@@ -1,4 +1,4 @@
-const CACHE_NAME = "QRbitr-v2.3"; // Add versioning
+const CACHE_NAME = "QRbitr-v2.3.4"; // pump version versioning
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
