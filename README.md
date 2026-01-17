@@ -1,4 +1,4 @@
-# QRbitr – Quick, Private, Offline Data Transfer in the Browser
+# QRbitr – Quick, Private, Offline Data Transfer in the Browser and Client Side Only
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://www.buymeacoffee.com/austinwin)  
 [QRbitr App](https://austinwin.github.io/qrbitr/): https://austinwin.github.io/qrbitr/  
 
